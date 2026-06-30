@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Platform with Comments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>.hidden { display: none; }</style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+    <nav class="bg-teal-600 text-white p-4 sticky top-0 z-50 shadow-md flex justify-between items-center">
+        <h1 class="text-xl font-bold cursor-pointer" onclick="showSection('feed-section')">✍️ DevBlog</h1>
+        <div class="flex items-center space-x-4">
+            <button id="nav-create-btn" onclick="showSection('create-section')" class="hidden bg-emerald-500 hover:bg-emerald-600 px-3 py-1 rounded text-sm font-bold">New Post</button>
+            <span id="user-display" class="text-sm font-medium"></span>
+            <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm font-semibold">Logout</button>
+        </div>
+    </nav>
+
+    <div id="auth-section" class="flex items-center justify-center min-h-[80vh]">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm mx-4">
+            <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-teal-600">Login to Blog</h2>
+            <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Username</label>
+                    <input type="text" id="username" required class="w-full p-2 border rounded" placeholder="Enter username">
+                </div>
+                <button type="submit" class="w-full bg-teal-600 text-white p-2 rounded font-bold hover:bg-teal-700">Enter Platform</button>
+            </form>
+        </div>
+    </div>
+
+    <main class="max-w-4xl mx-auto p-4 hidden" id="main-content">
+        
+        <section id="feed-section" class="section">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Latest Stories</h2>
+            <div id="blog-list" class="space-y-6">
+                </div>
+        </section>
+
+        <section id="create-section" class="section hidden">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 id="form-heading" class="text-lg font-bold mb-4 text-gray-700">Create New Blog Post</h3>
+                <form id="blog-form" onsubmit="handleBlogSubmit(event)" class="space-y-4">
+                    <input type="hidden" id="blog-id">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Title</label>
+                        <input type="text" id="blog-title" required class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500" placeholder="Title of your post">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Content</label>
+                        <textarea id="blog-content" required rows="6" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500" placeholder="Write your story here..."></textarea>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded font-bold hover:bg-teal-700">Publish Post</button>
+                        <button type="button" onclick="showSection('feed-section')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded font-bold hover:bg-gray-400">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Sample Initial Blogs Data
+        const defaultBlogs = [
+            { id: 1, title: "Getting Started with Full-Stack Development", author: "Admin", content: "Full stack development involves both the frontend (client-side) and backend (server-side) of a web application. Learning HTML, CSS, JavaScript, and a server language like Node.js can jumpstart your career.", comments: [{ user: "Rahul", text: "Very helpful introduction!" }] },
+            { id: 2, title: "The Power of Tailwind CSS", author: "JohnDoe", content: "Tailwind CSS allows you to build modern websites without ever leaving your HTML. It uses utility classes instead of pre-designed components, making UI development highly flexible and custom.", comments: [] }
+        ];
+
+        let blogs = JSON.parse(localStorage.getItem('b_posts')) || defaultBlogs;
+        let currentUser = localStorage.getItem('b_user') || null;
+
+        window.onload = function() {
+            if (currentUser) {
+                showDashboard();
+            }
+        };
+
+        function handleAuth(e) {
+            e.preventDefault();
+            currentUser = document.getElementById('username').value;
+            localStorage.setItem('b_user', currentUser);
+            showDashboard();
+        }
+
+        function showDashboard() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            document.getElementById('nav-create-btn').classList.remove('hidden');
+            document.getElementById('user-display').innerText = `👤 ${currentUser}`;
+            showSection('feed-section');
+            renderBlogs();
+        }
+
+        function logout() {
+            localStorage.removeItem('b_user');
+            currentUser = null;
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('nav-create-btn').classList.add('hidden');
+            document.getElementById('auth-form').reset();
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+            if(sectionId === 'create-section' && !document.getElementById('blog-id').value) {
+                document.getElementById('form-heading').innerText = "Create New Blog Post";
+                document.getElementById('blog-form').reset();
+            }
+        }
+
+        function renderBlogs() {
+            const list = document.getElementById('blog-list');
+            list.innerHTML = '';
+
+            blogs.forEach((blog, bIndex) => {
+                let commentHTML = '';
+                blog.comments.forEach(c => {
+                    commentHTML += `
+                        <div class="bg-gray-50 p-2 rounded border border-gray-100 text-sm">
+                            <span class="font-bold text-teal-700">${c.user}:</span> ${c.text}
+                        </div>
+                    `;
+                });
+
+                let actionButtons = '';
+                // Only show edit/delete if current user is the author
+                if(blog.author === currentUser) {
+                    actionButtons = `
+                        <div class="space-x-2 text-xs">
+                            <button onclick="editBlog(${bIndex})" class="text-blue-600 hover:underline">Edit</button>
+                            <button onclick="deleteBlog(${bIndex})" class="text-red-600 hover:underline">Delete</button>
+                        </div>
+                    `;
+                }
+
+                list.innerHTML += `
+                    <div class="bg-white p-6 rounded-lg shadow-md border border-gray-100">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">${blog.title}</h3>
+                                <p class="text-xs text-gray-500">By <span class="font-medium text-teal-600">${blog.author}</span></p>
+                            </div>
+                            ${actionButtons}
+                        </div>
+                        <p class="text-gray-700 leading-relaxed mb-6 whitespace-pre-wrap">${blog.content}</p>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="text-sm font-bold text-gray-600 mb-2">Comments (${blog.comments.length})</h4>
+                            <div class="space-y-2 mb-3 max-h-40 overflow-y-auto">
+                                ${commentHTML || '<p class="text-xs text-gray-400 italic">No comments yet. Be the first!</p>'}
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="comm-input-${bIndex}" class="flex-1 p-1.5 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-teal-500" placeholder="Write a comment...">
+                                <button onclick="addComment(${bIndex})" class="bg-teal-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-teal-700">Post</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function handleBlogSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('blog-id').value;
+            const title = document.getElementById('blog-title').value;
+            const content = document.getElementById('blog-content').value;
+
+            if (id === '') {
+                // Create Post
+                blogs.unshift({ id: Date.now(), title, author: currentUser, content, comments: [] });
+            } else {
+                // Edit / Update Post
+                blogs[id].title = title;
+                blogs[id].content = content;
+                document.getElementById('blog-id').value = '';
+            }
+
+            localStorage.setItem('b_posts', JSON.stringify(blogs));
+            document.getElementById('blog-form').reset();
+            showSection('feed-section');
+            renderBlogs();
+        }
+
+        function editBlog(index) {
+            document.getElementById('blog-id').value = index;
+            document.getElementById('blog-title').value = blogs[index].title;
+            document.getElementById('blog-content').value = blogs[index].content;
+            document.getElementById('form-heading').innerText = "Edit Blog Post";
+            showSection('create-section');
+        }
+
+        function deleteBlog(index) {
+            if (confirm("Are you sure you want to delete this blog post?")) {
+                blogs.splice(index, 1);
+                localStorage.setItem('b_posts', JSON.stringify(blogs));
+                renderBlogs();
+            }
+        }
+
+        function addComment(blogIndex) {
+            const input = document.getElementById(`comm-input-${blogIndex}`);
+            if (!input.value.trim()) return;
+
+            blogs[blogIndex].comments.push({
+                user: currentUser,
+                text: input.value.trim()
+            });
+
+            localStorage.setItem('b_posts', JSON.stringify(blogs));
+            input.value = '';
+            renderBlogs();
+        }
+    </script>
+</body>
+</html>
